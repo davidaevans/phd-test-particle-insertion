@@ -1,4 +1,5 @@
 .vscode
+data
 .DS_Store
 **/*.o
 source/tpi

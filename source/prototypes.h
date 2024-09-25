@@ -48,7 +48,8 @@ void normalise_and_write_rdf(struct mystat *rdf,
                              long nsweeps,
                              long equilibrate,
                              double dr,
-                             struct vector box);
+                             struct vector box,
+                             double boltzmann_factor_mean);
 
 void load(FILE *configurations_file, struct disc *particle, long npart,
          long ncellx, long ncelly, struct disc **cfirst, struct vector box,
@@ -76,10 +77,10 @@ void test_interpolated_potential(double **potential, long potential_length, doub
 
 void calculate_gr_cell_lists(long num_test_particles, struct vector *box, long ncellx, long ncelly, long **neighbour, struct disc **cfirst,
                              double **potential, long potential_length, double dr, double kt, struct mystat *rdf, long npart, struct disc *particle,
-                             double maxsep, int grid, long ngridx, long ngridy, double gridspacingx, double gridspacingy);
+                             double maxsep, int grid, long ngridx, long ngridy, double gridspacingx, double gridspacingy, double *boltzmann_factor_mean);
 
 void calculate_gr_no_cell_lists(long num_test_particles, struct vector *box, double **potential, long potential_length, 
                                 double dr, double kt, struct mystat *rdf, long npart, struct disc *particle, double maxsep,
-                                int grid, long ngridx, long ngridy, double gridspacingx, double gridspacingy);
+                                int grid, long ngridx, long ngridy, double gridspacingx, double gridspacingy, double *boltzmann_factor_mean);
 
 struct vector get_grid_point(long ngridx, long ngridy, double gridspacingx, double gridspacingy, long index);

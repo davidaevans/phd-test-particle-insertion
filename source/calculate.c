@@ -70,7 +70,7 @@ Returns energy of particle separation based of linear interpolation of potential
 */
 
 double calculate_energy(double **potential, long potential_length, double r, double dr) {
-
+    //Assumes potential values are left edge of bin
     long i;
     double r1, r2, v1, v2;
     double tmp_energy;
@@ -102,7 +102,7 @@ double calculate_energy(double **potential, long potential_length, double r, dou
     // printf("left edge: %lf, right edge: %lf\n", r1, r2);
 
     tmp_energy = interpolate(r1, r2, v1, v2, r);
-    // printf("        %lf %le\n", r, tmp_energy);
+    // printf("  tmp_energy: %.15lf", tmp_energy);
     return tmp_energy;
 }
 

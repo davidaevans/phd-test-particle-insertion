@@ -41,7 +41,8 @@ void normalise_and_write_rdf(struct mystat *rdf,
                              long nsweeps,
                              long equilibrate,
                              double dr,
-                             struct vector box) {
+                             struct vector box,
+                             double boltzmann_factor_mean) {
 
     long i;
     long sweeps;
@@ -54,17 +55,9 @@ void normalise_and_write_rdf(struct mystat *rdf,
 
     normalised_rdf = (double *)malloc(numbins * sizeof(double));
     
-    //normalisation of the histogram by expected number of particles from ideal gas
-    tmp_denom = 0.0;
-    n_samples = 0;
-    for (i=0;i<numbins;i++){
-        tmp_denom += rdf[i].sum;
-        n_samples += rdf[i].samples;
-    }
-    denom = (double) tmp_denom / n_samples;
 
     for (i=0;i<numbins;i++) {
-        normalised_rdf[i] = (double) rdf[i].mean / denom;
+        normalised_rdf[i] = (double) rdf[i].mean / boltzmann_factor_mean;
     }
 
     //write the resulting normalised histogram to the rdf.dat file 

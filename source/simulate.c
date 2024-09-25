@@ -14,6 +14,8 @@ void simulate(long npart, struct vector *box, long nsweeps,
    double tmp_exp;    /* Temporary variable to store the value of exp(-E/kt) */
    double r;
    double gridspacingx, gridspacingy;
+   double boltzmann_factor_mean;
+   double boltzmann_factor_sum;
    long ngridx, ngridy;
    long i, j;
    long bin;
@@ -38,7 +40,7 @@ void simulate(long npart, struct vector *box, long nsweeps,
    
    /*=== Initialise counters etc. ===*/
 
-
+   boltzmann_factor_mean = boltzmann_factor_sum = 0.0;
    numbins = 0;
    maxsep = 0;
    rdfhist = NULL;
@@ -197,70 +199,11 @@ void simulate(long npart, struct vector *box, long nsweeps,
 
       //printf("Sweep: %ld\n", sweep);      
       load(configurations_file, particle, npart, ncellx, ncelly, cfirst, *box, sourcetype);
- 
-
-      // for (i = 0; i < num_test_particles; i++) {
-      //    // Get test particle location
-      //    test_particle = get_test_particle_location(box);
-	   //    // printf("\n\ntp-x: %lf y: %lf\n", test_particle.x, test_particle.y);
-      //    // fflush(stdout);
-      //    test_cell = getcell(test_particle, ncellx, ncelly, *box);
-      //    // printf("test cell: %ld\n", test_cell); 
-
-      //    // Loop through "neighbouring" particles to calculate new energies around test particle
-      //    tmp_energy = 0.0;
-      //    tmp_neighbours = 0;
-      //    tmp_cells = 0;
-
-      //    cell = &neighbour[test_cell][0];
-      //    while (*cell >= 0) {
-      //       // printf("    cell: %ld\n", *cell);
-      //       // fflush(stdout);
-      //       tmp_cells++;         
-      //       neighbouring_particle = cfirst[*cell];
-            
-      //       while (neighbouring_particle) {
-      //          // Don't need to test if neighbouring particle = test particle as haven't added the test particle to the cell
-      //          r_cm = image(test_particle, neighbouring_particle->pos, *box);
-      //          r = sqrt(DOT(r_cm, r_cm));
-      //          tmp_energy += calculate_energy(potential, potential_length, r, dr);
-      //          tmp_neighbours++;      
-
-      //          neighbouring_particle = neighbouring_particle->next;
-      //       }
-      //       cell++;
-      //       // printf("    cell++: %ld\n", *cell);
-      //       // fflush(stdout);
-      //    }
-
-
-      //    // Calculate temporary value of exponent around this test particle
-      //    tmp_exp = exp(-tmp_energy/kt);
-      //    //printf("%le %le %le\n", tmp_energy, kt, tmp_exp);
-
-      //    // Loop over all other particles up to cutoff of half length of box
-      //    for (j = 0; j < npart; j++) {
-      //       r_cm = image(test_particle, particle[j].pos, *box);
-      //       r = sqrt(DOT(r_cm, r_cm));
-
-      //       if (r > maxsep) {continue;}
-
-      //       // Calculate rdf bin from separation
-      //       bin = (long) floor(r/dr);
-      //       // printf("r: %lf bin: %ld\n", r, bin);
-
-      //       // Add energy to statistics
-      //       accumulate(&(rdf[bin]), tmp_exp);
-
-      //    }
-
-      //    // Go to next test particle
-      // }
 
       if (ncells == 0){
-         calculate_gr_no_cell_lists(num_test_particles, box, potential, potential_length, dr, kt, rdf, npart, particle, maxsep, grid, ngridx, ngridy, gridspacingx, gridspacingy);
+         calculate_gr_no_cell_lists(num_test_particles, box, potential, potential_length, dr, kt, rdf, npart, particle, maxsep, grid, ngridx, ngridy, gridspacingx, gridspacingy, &boltzmann_factor_sum);
       } else {
-         calculate_gr_cell_lists(num_test_particles, box, ncellx, ncelly, neighbour, cfirst, potential, potential_length, dr, kt, rdf, npart, particle, maxsep, grid, ngridx, ngridy, gridspacingx, gridspacingy);
+         calculate_gr_cell_lists(num_test_particles, box, ncellx, ncelly, neighbour, cfirst, potential, potential_length, dr, kt, rdf, npart, particle, maxsep, grid, ngridx, ngridy, gridspacingx, gridspacingy, &boltzmann_factor_sum);
       }
       
 
@@ -277,7 +220,9 @@ void simulate(long npart, struct vector *box, long nsweeps,
    }
    free(neighbour);
 
-   normalise_and_write_rdf(rdf, numbins, npart, nsweeps, equilibrate, dr, *box);
+   boltzmann_factor_mean = (double) boltzmann_factor_sum / (nsweeps * num_test_particles);
+
+   normalise_and_write_rdf(rdf, numbins, npart, nsweeps, equilibrate, dr, *box, boltzmann_factor_mean);
    
 }
 
@@ -337,10 +282,10 @@ void test_cell_lists(long **neighbours, long ncells) {
 
 void calculate_gr_cell_lists(long num_test_particles, struct vector *box, long ncellx, long ncelly, long **neighbour, struct disc **cfirst,
                              double **potential, long potential_length, double dr, double kt, struct mystat *rdf, long npart, struct disc *particle,
-                             double maxsep, int grid, long ngridx, long ngridy, double gridspacingx, double gridspacingy) {
+                             double maxsep, int grid, long ngridx, long ngridy, double gridspacingx, double gridspacingy, double *boltzmann_factor_sum) {
    double tmp_energy, tmp_exp;
    double r;
-   long i, j;
+   long i, j,k;
    long *cell, test_cell;
    long tmp_neighbours, tmp_cells;
    long bin;
@@ -389,6 +334,7 @@ void calculate_gr_cell_lists(long num_test_particles, struct vector *box, long n
 
       // Calculate temporary value of exponent around this test particle
       tmp_exp = exp(-tmp_energy/kt);
+      *boltzmann_factor_sum += tmp_exp;
       //printf("%le %le %le\n", tmp_energy, kt, tmp_exp);
 
       // Loop over all other particles up to cutoff of half length of box
@@ -413,7 +359,7 @@ void calculate_gr_cell_lists(long num_test_particles, struct vector *box, long n
 }
 
 void calculate_gr_no_cell_lists(long num_test_particles, struct vector *box, double **potential, long potential_length, double dr, double kt, struct mystat *rdf, long npart, struct disc *particle,
-                                double maxsep, int grid, long ngridx, long ngridy, double gridspacingx, double gridspacingy) {
+                                double maxsep, int grid, long ngridx, long ngridy, double gridspacingx, double gridspacingy, double *boltzmann_factor_sum) {
    double tmp_energy, tmp_exp;
    double r;
    long i, j;
@@ -449,6 +395,7 @@ void calculate_gr_no_cell_lists(long num_test_particles, struct vector *box, dou
 
       // Calculate temporary value of exponent around this test particle
       tmp_exp = exp(-tmp_energy/kt);
+      *boltzmann_factor_sum += tmp_exp;
       //printf("%le %le %le\n", tmp_energy, kt, tmp_exp);
 
       // Loop over all other particles up to cutoff of half length of box
